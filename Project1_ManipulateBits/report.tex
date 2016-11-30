@@ -1,0 +1,584 @@
+%!TEX program = xelatex
+\documentclass[a4paper, 11pt]{article}
+\usepackage{ctex}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{parskip}
+\usepackage{enumerate}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{algorithmicx}
+\usepackage{caption}
+\usepackage{tikz}
+
+\newenvironment{sol}[1] {\par \noindent $#1.$} {\par \hfill $\square$}
+
+\title{CS 359 - Computer Architecture \\ Project 1: Manipulating Bits \\ \vspace{3mm} {\large Shanghai Jiaotong University, Fall 2016}}
+\author{
+	\begin{tabular}{rl}
+		Student ID & \textbf{\emph{Name}} \\ \hline
+		5140719030 & \textbf{Jun Wang}
+	\end{tabular}
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{1 Introduction}
+
+The goal of this project is to become more familiar to bit-level representations of integers and floating point numbers by filling in a series of functions to operate them. There are two compulsory things:
+\begin{itemize}
+	\item Fully understand the bit-level representations of integers and floating point numbers.
+	\item Implement the functions using operations as simply as possible, solve the "puzzles" cleverly.
+\end{itemize}
+The steps of solution are described in following sections.
+
+\section*{2 Bit Manipulations}
+
+\subsection*{2.1 bitAnd}
+
+\begin{sol}{Sol}
+
+This function implements \bfseries x \& y \mdseries using only \bfseries {\big|} \mdseries and \bfseries $\sim$ \mdseries.
+
+According to \itshape De Morgan's Laws \normalfont, the puzzle can be easily solved.
+
+\centerline{A \& B = $\sim$ ( $\sim$ A {\big|} $\sim$ B)}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int bitAnd(int x, int y)
+{
+    return ~((~x)|(~y));
+}
+\end{lstlisting}
+
+\subsection*{2.2 getByte}
+
+\begin{sol}{Sol}
+
+This function returns the \bfseries n\itshape th\normalfont \mdseries byte in one word. Steps are followed:
+
+\begin{itemize}
+    \item Calculate how much bits to be shift, which is 8n, can be implemented using n\textless\textless 3
+    \item Shift the integer right, and do \itshape and \normalfont operation with \bfseries 0xff \mdseries to get the first byte.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int getByte(int x, int n)
+{
+    int bias;
+    int temp;
+    bias=n<<3;
+    temp=x>>bias;
+    return (temp&0xff);
+}
+\end{lstlisting}
+
+\subsection*{2.3 logicalShift}
+
+\begin{sol}{Sol}
+
+This function returns the \bfseries logical shift \mdseries result of an integer. The difference between the logical shift result and arithmetic shift is that the bits added while shifting in logical shift is zero. To implement this, we can do \itshape \bfseries and \mdseries \normalfont operation with zero in the higher \itshape\bfseries n \mdseries\normalfont bits, which can be produced by shifting and inversing \bfseries 0x01\mdseries. Steps:
+
+\begin{itemize}
+    \item Shift \bfseries 0x01 \mdseries 31 bits left to produce \bfseries 0x80000000\mdseries.
+    \item Shift \bfseries 0x80000000\mdseries (n-1) bits right to produce the number which the n higher bits are 1s, others are 0s.
+    \item Inverse it and do \itshape\bfseries and \normalfont\mdseries operation with the origin integer and get result.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int logicalShift(int x, int n)
+{
+    int high=0x01<<31;
+    int temp=high>>n;
+    temp=temp<<1;
+    return (x>>n)&(~temp);
+}
+\end{lstlisting}
+
+\subsection*{2.4 bitCount}
+
+\begin{sol}{Sol}
+
+This function returns the numbers of "1" in the given integer. The problem can be solve by adding the integer per 2 bits, per 4 bits, per 8 bits, per 16 bits. The add operation can be done using different \itshape mask \normalfont numbers. Steps:
+
+\begin{itemize}
+    \item Produce relative \itshape\bfseries mask \mdseries\normalfont numbers used to mask integer when adding by using \itshape shift \normalfont and \itshape or \normalfont operations.
+    \item Do \itshape shift \normalfont and \itshape and \normalfont operations to the integer to add bits per 2 and 4 and 8 and 16 bits.
+\end{itemize}
+
+The code is straightforward. Part of codes is following.
+\end{sol}
+\begin{lstlisting}
+int bitCount(int x)
+{
+    int result;
+    int temp_mask1=(0x55)|(0x55<<8);
+    int mask1=(temp_mask1)| (temp_mask1<<16);
+    //...
+    //produce mask2, mask3, mask4, mask5
+    //for per 2, 4, 8, 16 bits in the same way.
+
+    result=(x&mask1)+((x>>1)&mask1);
+    result=(result&mask2)+((result>>2)&mask2);
+    result=(result&mask3)+((result>>4)&mask3);
+    result=(result&mask4)+((result>>8)&mask4);
+    result=(result&mask5)+((result>>16)&mask5);
+
+    return result;
+}
+\end{lstlisting}
+
+\subsection*{2.5 bang}
+
+\begin{sol}{Sol}
+
+This function returns !n without "!" operator. To implement this, just need to judge the integer is 0 or not.
+
+Since only 0 and 0x80000000 satisfy x=$\sim$x+1, so x{\big|}$\sim$x+1==0 if and only if x=0. So the expression \itshape x{\big|}$\sim$x+1 \normalfont can be used to make judgement. Steps:
+
+\begin{itemize}
+    \item Calculate \itshape x{\big|}$\sim$x+1 \normalfont.
+    \item return result.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int bang(int x) {
+    int neg;
+    int result;
+    neg=~x+1;
+    result= ~(neg|x);
+    return (result>>31)&0x01;
+}
+\end{lstlisting}
+
+\section*{3 Two's complement Arithmetic}
+
+\subsection*{3.1 tmin}
+
+\begin{sol}{Sol}
+
+This function returns most negative two's complement integer. According to the representation of two's complement of integer, \bfseries 0x80000000 \mdseries represents the most negative integer. It can get by shifting 0x01 directly.
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int tmin(void)
+{
+    return 0x01<<31;
+}
+\end{lstlisting}
+
+\subsection*{3.2 fitsBits}
+
+\begin{sol}{Sol}
+
+This function returns 1 iff the integer can be represented by n bits. Finding that if the integer can be represented, its \bfseries n\itshape th \normalfont\mdseries to \bfseries 32\itshape ed \normalfont\mdseries bits are all 1 or all 0, the same to the signbit. So firstly record the signbit, then shift the integer and compare with the signbit. Steps:
+
+\begin{itemize}
+    \item Record the signbit.
+    \item Shift the integer \bfseries $n-1$ \mdseries bits right.
+    \item According to the rule that the signbit and the shift result must be the same, return the result.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int fitsBits(int x, int n)
+{
+    int head = x >> 31;
+    int bias = n + ~0;		//n-1
+    int pos=~head & !(x>>bias);
+    int neg=head & !((~x)>>bias);
+    return pos|neg;
+}
+\end{lstlisting}
+
+\subsection*{3.3 divpwr2}
+
+\begin{sol}{Sol}
+
+This function returns $x/2^{n}$. For positives, shift the integer right $n$ bits can get the result. For negatives, because negatives are represented by two's complement, after shift right, we need add 1 if the 1 already added to the complement is shifted out. This can be realized by adding $n-1$ 1s to the shifted number.
+
+So use $head$ to record the sign and produce the adding number. The adding number must have $n-1$ 1s iff $head$ is not zero (the number is negative).Steps:
+
+\begin{itemize}
+    \item Record the signbit.
+    \item Shift $0x01$ to produce the number which has $n-1$ 1s.
+    \item Use the signbit and the add-number to produce the bias number, which will be added to the shifted number.
+    \item Shift the integer and add the bias to get the result.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int divpwr2(int x, int n)
+{
+    int head=x>>31;
+    int mask=(1<<n)+(~0);
+    int bias=head&mask;
+    return (x+bias)>>n;
+}
+\end{lstlisting}
+
+\subsection*{3.4 negate}
+
+\begin{sol}{Sol}
+
+This function produces $-x$ without using "$-$" operator. For both positives and negatives, inverse and plus one can get $-x$.
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int negate(int x)
+{
+    return ~x+1;
+}
+\end{lstlisting}
+
+\subsection*{3.5 isPositive}
+
+\begin{sol}{Sol}
+
+This function returns 1 iff the integer \textgreater 0. Use the signbit to judge the negative and positive. Besides, must return 0 when it comes 0. This can realized using $!x$ and logical arithmetic with signbit.
+
+\begin{itemize}
+    \item Record the signbit.
+    \item Do logical arithmetic with $x$ itself.
+    \item Return result.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int isPositive(int x)
+{
+        int head= (x>>31)&0x01;
+        return !(head^(!x));
+}
+\end{lstlisting}
+
+\subsection*{3.6 isLessOrEqual}
+
+\begin{sol}{Sol}
+
+This function returns 1 iff the integer \textgreater 0. Use the signbit to judge the negative and positive. Besides, must return 0 when it comes 0. This can realized using $!x$ and logical arithmetic with signbit.
+
+\begin{itemize}
+    \item Record the signbit.
+    \item Do logical arithmetic with $x$ itself.
+    \item Return result.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int isPositive(int x)
+{
+        int head= (x>>31)&0x01;
+        return !(head^(!x));
+}
+\end{lstlisting}
+
+\subsection*{3.7 ilog2}
+
+\begin{sol}{Sol}
+
+This function computes the log2 value of the input integer. This value equals to the highest bit which is 1.
+
+Use variables to record bits or bytes which does not equals to zero firstly. Steps:
+\begin{itemize}
+    \item Spilt the integer to four bytes.
+    \item Use four variables to record the first byte which does not equal to zero.
+    \item Select the first byte which is not zero according to variables in Step 2.
+    \item Use eight variables to record the first bit in the byte which is not zero.
+    \item Calculate the number of bits which is the first 1 according the variables.
+    \item Return the number calculated.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+int ilog2(int x) {
+    int byte3=(x>>24)&0xff;
+    //byte2,byte1,byte0 is the same.
+
+    int i3=!!byte3;
+    //i2,i1,i0 is the same
+    int i=i3+i2+i1+i0+~0;
+    int highbyte=x>>(i<<3);
+
+    int b7=(highbyte>>7)&1;
+    //b6,..,b0 is the same
+
+    int f7=b7;
+    int f6=f7|b6;
+    // f5,...,f0 is the same
+    int f=f7+f6+f5+f4+f3+f2+f1+f0+~0;
+
+    return (i<<3)+f;
+}
+\end{lstlisting}
+
+\section*{4 Floating-Point Operations}
+
+\subsection*{4.1 float-neg}
+
+\begin{sol}{Sol}
+
+This function returns the negative of the input float, which is transmitted in unsigned. Because the function needs to return a "nan" when input is "nan", the "nan" needs to be recognized.
+
+To recognized "nan", firstly, spilt the integer to get exponential and magnitude portion. Compare these bits with $0x7f800000$, if it is not a "nan", change the signbit.
+
+\begin{itemize}
+    \item Spilt the integer to get exponential and magnitude portion.
+    \item Compare to $0x7fffffff$.
+    \item Change the sign bit.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+unsigned float_neg(unsigned uf) {
+    unsigned temp=uf & 0x7fffffff;
+    if(temp>0x7f800000) return uf;
+    else return uf^0x80000000;
+}
+
+\end{lstlisting}
+
+\subsection*{4.2 float-i2f}
+
+\begin{sol}{Sol}
+
+This function returns the representation of floating point numbers. To get it, we need to figure out the exponential,magnitude portion and the sign bit. Use a while-loop to shift the integer to the bit which is second to the first $1$, and this is the magnitude portion. Use a variable to count the times of the shift, and this is the exponential portion. The sign bit is the same to the integer. 
+
+\begin{itemize}
+    \item Pretreat the input integer.
+    \item Use a while-loop to shift the number to get exponential and magnitude portion.
+    \item Round the exponential portion.
+    \item Calculate the representation.
+\end{itemize}
+
+The code is straightforward.
+\end{sol}\begin{lstlisting}
+unsigned float_i2f(int x)
+{
+    unsigned shiftLeft=0;
+    unsigned temp, aftershift, round;
+    unsigned absX=x;
+    unsigned sign=x&0x80000000;
+    //special case
+    if (!x)	return 0;
+    //if x < 0, abs_x = -x
+    if (sign)
+    absX=-x;
+    aftershift=absX;
+    //count shift_left and after_shift
+    while (1)
+    {
+        temp=aftershift;
+        aftershift=aftershift<<1;
+        shiftLeft=shiftLeft+1;
+        if (temp & 0x80000000) 	break;
+    }
+    if ((aftershift & 0x01ff)>0x0100)
+        round=1;
+    else if ((aftershift & 0x03ff)==0x0300)
+        round=1;
+    else
+        round=0;
+
+    return sign + (aftershift>>9) + ((159-shiftLeft)<<23) + round;
+}
+\end{lstlisting}
+
+\subsection*{4.3 float-twice}
+
+\begin{sol}{Sol}
+
+This function returns $2*f$ of the input $f$. This question have several conditions. If the expo-portion is all 1s, the output needs not change. If the expo-portion is zero. the magnitude portion needs to shift. Else, the expo-portion needs to plus one.
+
+\begin{itemize}
+    \item Spilt the integer to exponential and magnitude portion.
+    \item Judge the exponential portion.
+    \item According to the judgement to change the exponential or magnitude portion
+\end{itemize}
+
+The code is straightforward.
+\end{sol}
+\begin{lstlisting}
+unsigned float_twice(unsigned uf)
+{
+    unsigned sign=uf&0x80000000;
+    unsigned expo=uf&0x7f800000;
+    if(expo)
+    {
+        if(expo!=0x7f800000)
+        uf=uf+0x00800000;
+    }
+    else
+      uf= (uf<<1)+sign;
+    return uf ;
+}
+
+\end{lstlisting}
+%\section*{Exercise 3. \normalfont [max needs at least $n - 1$ comparisons]}
+%
+%\begin{sol}{Proof}
+%
+%Consider each element as a vertex of a graph.
+%An edge connects two vertices if and only if the two elements are compared.
+%Because a connected graph with $|V| = n$ has at least $n - 1$ paths, a graph which has $n - 2$ paths is not a connected graph.
+%So there exists a non-empty set of vertices $S$, $s.t.$ no path exists between $S$ and $V \setminus S$.
+%Since there is no path between $S$ and $V \setminus S$, we cannot find the bigger one between the maximum of $S$ and the maximum of $V \setminus S$.
+%Hence the algorithm fails.
+%
+%\end{sol}
+%
+%\section*{Exercise 4.}
+%
+%\begin{sol}{Sol}
+%
+%Since \texttt{mergesort} is a recursive function and it performs \texttt{merge} in each recursive step, we can also construct the array recursively to let the \texttt{merge} procedure get the worst performance.
+%Suppose we have constructed an array of $n = 2^k$ numbers, which is a permutation of $0, 1, \ldots, n - 1$, denoted as $[a_0, a_1, \ldots, a_{n - 1}]$.
+%We let $A = [a_0 * 2, a_1 * 2, \ldots, a_{n - 1} * 2$, $B = [a_0 * 2 + 1, a_1 * 2 + 1, \ldots, a_{n - 1} * 2 + 1$.
+%It is obvious that both $A$ and $B$ is also the array with length $n$ that let \texttt{mergesort} get the worst performance.
+%What's more, since $A$ is the permutation of $0, 2, \ldots, 2n - 2$, and $B$ is the permutation of $1, 3, \ldots, 2n - 1$, merge $A$ and $B$ needs $2n - 1$ comparisons.
+%Hence, the array $A + B$ is the array with length $2n$ that let \texttt{mergesort} get the worst performance.
+%The python source code is listed below:
+%
+%\lstset{language = Python}
+%
+%\begin{lstlisting}
+%def merge_create(length):
+%	if length == 1:
+%		return [0]
+%	ret = merge_create(length // 2)
+%	res = []
+%	for i in range(length):
+%		if i < length // 2:
+%			res.append(ret[i] * 2)
+%		else:
+%			res.append(ret[i - length // 2] * 2 + 1)
+%	return res
+%\end{lstlisting}
+%
+%\end{sol}
+%
+%\section*{Exercise 5.}
+%
+%\begin{sol}{Sol}
+%
+%We denote the expected number of comparisons made by quicksort as $C_n$. Obviously, we have $C_0=C_1=0$.
+%
+%When $n\geqslant 2$, we can derive that
+%\begin{equation} \label{1}
+%    C_n=n-1+\left(\frac{C_0+C_{n-1}}{n}\right)+\left(\frac{C_1+C_{n-2}}{n}\right)+\cdots+\left(\frac{C_{n-1}+C_0}{n}\right)
+%\end{equation}
+%and
+%\begin{equation}
+%    C_{n+1}=n+\left(\frac{C_0+C_{n}}{n+1}\right)+\left(\frac{C_1+C_{n-1}}{n+1}\right)+\cdots+\left(\frac{C_{n}+C_0}{n+1}\right)
+%\end{equation}
+%After we have (2) minus (1), we can have
+%\begin{equation}
+%    C_{n+1}=\frac{n+2}{n+1}C_n+\frac{2n}{n+1}
+%\end{equation}
+%i.e.
+%\begin{equation}
+%    C_{n}=\frac{n+1}{n}C_{n-1}+\frac{2(n-1)}{n}\\
+%\end{equation}
+%for which the asymptotic solution is $2n\ln n$
+%
+%\end{sol}
+%
+%\section*{Exercise 6.}
+%
+%\begin{sol}{Sol}
+%
+%\texttt{QuickSelect} firstly chooses a standard element, and divides the array into three parts: the standard, elements bigger than the standard, and the elements smaller than the standard.
+%This step is the same as quicksort.
+%Then \texttt{QuickSelect} selects one part according to the value of $k$, and does the recursive work.
+%
+%\subsection*{Example}
+%Suppose we quicksort $[4, 2, 6, 3, 5, 0, 1, 7]$.
+%The recursive tree is presented below:
+%\begin{center}
+%\begin{tikzpicture}[level 1/.style = {sibling distance = 3cm}, level 2/.style = {sibling distance = 1.5cm}]
+%	\node[circle, draw]{$4$}
+%		child{node[circle, draw]{$2$}
+%			child{node[circle, draw]{$0$}
+%				child[missing]{}
+%				child{node[circle, draw]{$1$}}
+%			}
+%			child{node[circle, draw]{$3$}}
+%		}
+%		child{node[circle, draw]{$6$}
+%			child{node[circle, draw]{$5$}}
+%			child{node[circle, draw]{$7$}}
+%		};
+%\end{tikzpicture}
+%\end{center}
+%
+%And if we call \texttt{QuickSelect} to get the second smallest element of the array, the new tree is presented below:
+%\begin{center}
+%\begin{tikzpicture}[level 1/.style = {sibling distance = 3cm}, level 2/.style = {sibling distance = 1.5cm}]
+%	\node[circle, draw]{$4$}
+%		child{node[circle, draw]{$2$}
+%			child{node[circle, draw]{$0$}
+%				child[missing]{}
+%				child{node[circle, draw]{$1$}}
+%			}
+%			child[missing]{}
+%		}
+%		child[missing]{};
+%\end{tikzpicture}
+%\end{center}
+%
+%\end{sol}
+%
+%\section*{Exercise 7.}
+%
+%\begin{sol}{Sol}
+%
+%\begin{align*}
+%	E[B_{i, j, k}] &= \Pr[B_{i, j, k} = 1] \\
+%	&= \Pr[i \text{~is a common ancestor of~} j \text{~and~} k] \\
+%	&= \Pr[i \text{~comes first in~} \pi \text{~among all elements between~} \pi_i \text{~to~} \pi_j \text{~and~} \pi_i \text{~to~} \pi_k] \\
+%	&= \frac 1 {\max\{i, j, k\} - \min\{i, j, k\} + 1}
+%\end{align*}
+%
+%\end{sol}
+%
+%\section*{Exercise 8.}
+%
+%\begin{sol}{Sol}
+%
+%\begin{align*}
+%      C_\pi =\sum_{i\not=j\not=k}^{n}(B_{i,j,k}+A_{i,k})
+%\end{align*}
+%\end{sol}
+%
+%\section *{Exercise 9.}
+%\begin{sol}{Sol}
+%\begin{align*}
+%        C_\pi &= (\frac{1}{2}+\frac{1}{3}+\frac{1}{n})+(\frac{1}{2}+\frac{1}{3}+\cdots+\frac{1}{n-1})\\
+%       &=(n-1)H_n-(n-1)-(\frac{n-2}{n}+\frac{n-3}{n-1}+\cdots+\frac{1}{3}\\
+%       &=(n-1)H_n-n+1-(n-2)+\frac{2}{n}+\frac{2}{n-1}+\cdots+\frac{2}{3}\\
+%       &=(n-1)H_n-2n+3+2(H_n-1-\frac{1}{2}\\
+%       &=(n+1)H_n-2n
+%\end{align*}
+%\end{sol}
+
+\end{document}
